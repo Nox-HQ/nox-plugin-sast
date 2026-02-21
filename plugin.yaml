@@ -1,0 +1,7 @@
+name: nox-plugin-sast
+version: 0.1.0
+track: core-analysis
+description: Multi-language static application security testing for common vulnerability classes
+tools:
+  - name: scan
+    description: Scan source files for common security vulnerabilities
