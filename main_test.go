@@ -178,3 +178,62 @@ func findByRule(findings []*pluginv1.Finding, ruleID string) []*pluginv1.Finding
 	}
 	return result
 }
+
+func safeDir(t *testing.T) string {
+	t.Helper()
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("unable to determine test file path")
+	}
+	return filepath.Join(filepath.Dir(filename), "testdata", "safe")
+}
+
+// TestPythonSQLiStillDetected confirms the SAST-001 fix detects the `%` format
+// operator (unsafe) while the safe-code test confirms it ignores `%s` params.
+func TestPythonSQLiStillDetected(t *testing.T) {
+	client := testClient(t)
+	resp := invokeScan(t, client, testdataDir(t))
+	if len(findByRule(resp.GetFindings(), "SAST-001")) == 0 {
+		t.Fatal("expected SAST-001 (SQLi) to still fire on the `%` format operator")
+	}
+}
+
+// TestNewRulesDetected exercises the SAST-006..009 rules against the vulnerable
+// fixtures; each must produce at least one finding with its CWE.
+func TestNewRulesDetected(t *testing.T) {
+	client := testClient(t)
+	resp := invokeScan(t, client, testdataDir(t))
+
+	want := map[string]string{
+		"SAST-006": "CWE-918",  // SSRF
+		"SAST-007": "CWE-327",  // weak crypto
+		"SAST-008": "CWE-601",  // open redirect
+		"SAST-009": "CWE-1336", // SSTI
+	}
+	for rule, cwe := range want {
+		found := findByRule(resp.GetFindings(), rule)
+		if len(found) == 0 {
+			t.Errorf("expected at least one %s finding", rule)
+			continue
+		}
+		if got := found[0].GetMetadata()["cwe"]; got != cwe {
+			t.Errorf("%s: expected %s, got %q", rule, cwe, got)
+		}
+	}
+}
+
+// TestSafeCodeHasNoFindings is the false-positive guard: equivalent SAFE code
+// (parameterized queries, sha256, allow-listed/constant URLs, constant
+// redirects) must produce ZERO findings. Without this, adding regex rules
+// silently inflates false positives.
+func TestSafeCodeHasNoFindings(t *testing.T) {
+	client := testClient(t)
+	resp := invokeScan(t, client, safeDir(t))
+
+	if n := len(resp.GetFindings()); n != 0 {
+		for _, f := range resp.GetFindings() {
+			t.Logf("unexpected finding: %s at line %d", f.GetRuleId(), f.GetLocation().GetStartLine())
+		}
+		t.Fatalf("expected 0 findings on safe code, got %d", n)
+	}
+}

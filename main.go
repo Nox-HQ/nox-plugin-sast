@@ -35,7 +35,10 @@ var rules = []sastRule{
 		CWE:         "CWE-89",
 		Patterns: map[string]*regexp.Regexp{
 			".go": regexp.MustCompile(`fmt\.Sprintf.*SELECT|query.*\+.*|Exec\(.*\+`),
-			".py": regexp.MustCompile(`execute\(.*%|execute\(.*\.format|f".*SELECT`),
+			// Match the `%` string-format OPERATOR (a quote followed by %),
+			// f-strings, or .format() — NOT a parameterized `%s` placeholder
+			// inside the string, which is the safe DB-API form.
+			".py": regexp.MustCompile(`execute\([^)]*["']\s*%|execute\(.*\.format|execute\(\s*f["']`),
 			".js": regexp.MustCompile(`query\(.*\+|query\(` + "`" + `.*\$\{`),
 			".ts": regexp.MustCompile(`query\(.*\+|query\(` + "`" + `.*\$\{`),
 		},
@@ -88,6 +91,54 @@ var rules = []sastRule{
 			".java": regexp.MustCompile(`ObjectInputStream|readObject\(`),
 			".js":   regexp.MustCompile(`JSON\.parse\(.*req\.\w+`),
 			".ts":   regexp.MustCompile(`JSON\.parse\(.*req\.\w+`),
+		},
+	},
+	{
+		ID:          "SAST-006",
+		Description: "Server-Side Request Forgery (SSRF): user-controlled input in an outbound HTTP request",
+		Severity:    sdk.SeverityHigh,
+		CWE:         "CWE-918",
+		Patterns: map[string]*regexp.Regexp{
+			".go": regexp.MustCompile(`http\.(Get|Post|Head|NewRequest)\([^)]*\+`),
+			".py": regexp.MustCompile(`requests\.(get|post|put|delete|head)\([^)]*\+|urllib\.request\.urlopen\([^)]*\+`),
+			".js": regexp.MustCompile(`(axios\.\w+|fetch)\([^)]*\+.*req\.`),
+			".ts": regexp.MustCompile(`(axios\.\w+|fetch)\([^)]*\+.*req\.`),
+		},
+	},
+	{
+		ID:          "SAST-007",
+		Description: "Weak Cryptography: use of a broken or deprecated hash/cipher (MD5, SHA-1, DES, RC4)",
+		Severity:    sdk.SeverityMedium,
+		CWE:         "CWE-327",
+		Patterns: map[string]*regexp.Regexp{
+			".go":   regexp.MustCompile(`\b(md5|sha1|des|rc4)\.New`),
+			".py":   regexp.MustCompile(`hashlib\.(md5|sha1)\(`),
+			".js":   regexp.MustCompile(`createHash\(["'](md5|sha1)["']`),
+			".ts":   regexp.MustCompile(`createHash\(["'](md5|sha1)["']`),
+			".java": regexp.MustCompile(`MessageDigest\.getInstance\(["'](MD5|SHA-1)["']`),
+		},
+	},
+	{
+		ID:          "SAST-008",
+		Description: "Open Redirect: user-controlled input used as a redirect target",
+		Severity:    sdk.SeverityMedium,
+		CWE:         "CWE-601",
+		Patterns: map[string]*regexp.Regexp{
+			".go": regexp.MustCompile(`http\.Redirect\([^)]*(r\.URL|r\.Form|\.Query\()`),
+			".py": regexp.MustCompile(`redirect\([^)]*request\.(args|form|GET|POST|values)`),
+			".js": regexp.MustCompile(`res\.redirect\([^)]*req\.(query|params|body)`),
+			".ts": regexp.MustCompile(`res\.redirect\([^)]*req\.(query|params|body)`),
+		},
+	},
+	{
+		ID:          "SAST-009",
+		Description: "Server-Side Template Injection (SSTI): user-controlled input compiled into a template",
+		Severity:    sdk.SeverityHigh,
+		CWE:         "CWE-1336",
+		Patterns: map[string]*regexp.Regexp{
+			".py": regexp.MustCompile(`render_template_string\(|Template\([^)]*request\.`),
+			".js": regexp.MustCompile(`(Handlebars|ejs|pug)\.compile\([^)]*req\.`),
+			".ts": regexp.MustCompile(`(Handlebars|ejs|pug)\.compile\([^)]*req\.`),
 		},
 	},
 }

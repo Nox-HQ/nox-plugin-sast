@@ -9,3 +9,7 @@ func getUser(db *sql.DB, name string) {
 	query := fmt.Sprintf("SELECT * FROM users WHERE name = '%s'", name)
 	db.Exec(query)
 }
+
+func ssrf(part string) { http.Get("http://internal/" + part) } // SSRF (SAST-006)
+
+func weak() { _ = md5.New() } // weak crypto (SAST-007)
