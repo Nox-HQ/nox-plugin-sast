@@ -1,3 +1,20 @@
+> ## ⚠️ Archived — superseded by nox core
+>
+> **This plugin is retired. Do not install it.** Remove it with
+> `nox plugin remove nox/sast`.
+>
+> Retired in **nox 1.10.0**. Seven of its nine rules duplicated vulnerability
+> classes core's taint engine already detects, so an affected project saw each
+> of those findings reported twice — once by core, once here.
+>
+> Its two genuinely additive rules were moved into core rather than dropped:
+> **CRYPTO-001** (weak cryptography) and **TAINT-007** (open redirect, gated on
+> taint rather than on a bare pattern). Core also carries dataflow this plugin
+> never had: import and alias resolution across Python, JS/TS, Clojure, Elixir
+> and C#, Go composite literals, and same-statement sanitizers.
+>
+> Removing it loses no coverage and removes the duplicates.
+
 # nox-plugin-sast
 
 **Multi-language static application security testing for common vulnerability classes.**
